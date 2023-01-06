@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { idbPromise } from '../../utils/helpers';
 import { useQuery } from '@apollo/client';
 import { QUERY_CATEGORIES } from '../../utils/queries';
 import { useStoreContext } from '../../utils/GlobalState';
@@ -7,7 +8,7 @@ import { UPDATE_CATEGORIES, UPDATE_CURRENT_CATEGORY } from '../../utils/actions'
 function CategoryMenu({ setCategory }) {
   const [state, dispatch] = useStoreContext();
   const { categories } = state;
-  const { data: categoryData } = useQuery(QUERY_CATEGORIES);
+  const { loading, data: categoryData } = useQuery(QUERY_CATEGORIES);
 
   const handleClick = id => {
     dispatch({
@@ -24,8 +25,21 @@ function CategoryMenu({ setCategory }) {
         type: UPDATE_CATEGORIES,
         categories: categoryData.categories
       });
+      categoryData.categories.forEach(category => {
+        idbPromise('categories', 'put', category);
+      });
+      // add else if to check if `loading` is undefined in `useQuery()` Hook
+    } else if (!loading) {
+      // since we're offline, get all of the data from the `categories` store
+      idbPromise('categories', 'get').then((categories) => {
+        // use retrieved data to set global state for offline browsing
+        dispatch({
+          type: UPDATE_CATEGORIES,
+          categories: categories
+        });
+      });
     }
-  }, [categoryData, dispatch]);
+  }, [categoryData, loading, dispatch]);
 
 
 
